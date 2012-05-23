@@ -13,6 +13,9 @@ import socket, ssl, select
 
 def remove_from_list(ls, val):
 	return [value for value in ls if value is not val]
+	
+def to_numeric(identifier):
+	return (ord(identifier[:1]) * 255) + ord(identifier[1:])
 
 client_list = []
 client_map = {}
@@ -20,11 +23,26 @@ select_inputs = []
 select_outputs = []
 
 class Client:
+	buff = ""
+	
 	def __init__(self, connstream):
 		self.stream = connstream
 
 	def process_data(self, data):
-		print "I received %s" % data
+		self.buff += data
+		stack = self.buff.split("\0")
+		self.buff = stack.pop()
+		
+		for chunk in stack:
+			self.process_chunk(chunk)
+		
+	def process_chunk(self, chunk):
+		if len(chunk) > 2:
+			channel_identifier = chunk[:2]
+			data = chunk[2:]
+			
+			channel_numeric = to_numeric(channel_identifier)
+			print channel_numeric
 
 bindsocket = socket.socket()
 bindsocket.bind(('0.0.0.0', 9151))
