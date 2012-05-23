@@ -9,6 +9,8 @@ key_path = '/home/sven/ssl/private'
 # Configuration ends here
 ################################
 
+EOC = "\0"
+
 import socket, ssl, select, math
 
 def remove_from_list(ls, val):
@@ -31,11 +33,11 @@ class Client:
 	
 	def __init__(self, connstream):
 		self.stream = connstream
-		self.channel_map[0] = Channel(EchoHandler())
+		self.channel_map[0] = Channel(self, EchoHandler())
 
 	def process_data(self, data):
 		self.buff += data
-		stack = self.buff.split("\0")
+		stack = self.buff.split(EOC)
 		self.buff = stack.pop()
 		
 		for chunk in stack:
@@ -57,13 +59,19 @@ class Channel:
 	numeric = 0
 	binary = False
 	handler = None
+	client = None
 	
-	def __init__(self, handler, binary=False):
+	def __init__(self, client, handler, binary=False):
 		self.handler = handler
 		self.binary = binary
+		self.client = client
 		
 	def process_chunk(self, chunk):
+		self.send("ohai")
 		self.handler.process(chunk)
+		
+	def send(self, data):
+		self.client.stream.send(to_identifier(self.numeric) + data + EOC)
 		
 class Handler:
 	def process(self, chunk):

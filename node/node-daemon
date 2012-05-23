@@ -24,4 +24,6 @@ ssl_sock.connect(('localhost', 9151))
 
 ssl_sock.write(to_identifier(0) + 'test data' + EOC + to_identifier(4190) + 'SAMPLEDATA' + EOC)
 
+print ssl_sock.read()[2:]
+
 ssl_sock.close()
