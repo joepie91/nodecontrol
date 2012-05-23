@@ -22,19 +22,9 @@ select_outputs = []
 class Client:
 	def __init__(self, connstream):
 		self.stream = connstream
-		self.readloop()
-		
-	def readloop(self):
-		try:
-			data = self.stream.read()
-			
-			while data:
-				print data
-				data = self.stream.read()
-		except ssl.SSLError, socket.error:
-			# todo: handle exception, something went wrong with SSL or connection broke
-			pass
 
+	def process_data(self, data):
+		print "I received %s" % data
 
 bindsocket = socket.socket()
 bindsocket.bind(('0.0.0.0', 9151))
@@ -43,7 +33,7 @@ bindsocket.listen(5)
 select_inputs = [ bindsocket ]
 
 while select_inputs:
-	readable, writable, exceptional = select.select(select_inputs, select_outputs, select_inputs)
+	readable, writable, error = select.select(select_inputs, select_outputs, select_inputs)
 	
 	for sock in readable:
 		if sock is bindsocket:
@@ -67,8 +57,8 @@ while select_inputs:
 			data = sock.recv(1024)
 			
 			if data:
-				print sock.fileno()
-				print sock.read()
+				cur_client = client_map[sock.fileno()]
+				cur_client.process_data(data)
 			else:
 				select_inputs = remove_from_list(select_inputs, sock)
 				print "NOTICE: Client disconnected"
