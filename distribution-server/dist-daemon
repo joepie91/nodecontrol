@@ -27,9 +27,11 @@ select_outputs = []
 
 class Client:
 	buff = ""
+	channel_map = {}
 	
 	def __init__(self, connstream):
 		self.stream = connstream
+		self.channel_map[0] = Channel()
 
 	def process_data(self, data):
 		self.buff += data
@@ -45,7 +47,16 @@ class Client:
 			data = chunk[2:]
 			
 			channel_numeric = to_numeric(channel_identifier)
-			print "Received data on channel %d: %s" % (channel_numeric, data)
+			
+			if channel_numeric in self.channel_map:
+				print "Received data on channel %d: %s" % (channel_numeric, data)
+			else:
+				print "Received data on NON-EXISTENT channel %d" % channel_numeric
+				
+class Channel:
+	numeric = 0
+	binary = False
+	handler = None
 
 bindsocket = socket.socket()
 bindsocket.bind(('0.0.0.0', 9151))
