@@ -45,7 +45,7 @@ class Client:
 			data = chunk[2:]
 			
 			channel_numeric = to_numeric(channel_identifier)
-			print channel_numeric
+			print "Received data on channel %d: %s" % (channel_numeric, data)
 
 bindsocket = socket.socket()
 bindsocket.bind(('0.0.0.0', 9151))
