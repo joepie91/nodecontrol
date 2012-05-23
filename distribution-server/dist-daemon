@@ -57,6 +57,17 @@ class Channel:
 	numeric = 0
 	binary = False
 	handler = None
+	
+	def __init__(self, handler, binary=False):
+		self.handler = handler
+		self.binary = binary
+		
+	def process_chunk(self, chunk):
+		self.handler.process(chunk)
+		
+class Handler:
+	def process(chunk):
+		pass
 
 bindsocket = socket.socket()
 bindsocket.bind(('0.0.0.0', 9151))
