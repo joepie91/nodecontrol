@@ -1,1 +1,50 @@
 #!/usr/bin/python
+
+import socket, ssl
+
+client_list = []
+
+class Client:
+	def __init__(self, connstream):
+		self.stream = connstream
+		self.readloop()
+		
+	def readloop(self):
+		try:
+			data = self.stream.read()
+			
+			while data:
+				print data
+				data = self.stream.read()
+		except ssl.SSLError, socket.error:
+			# todo: handle exception, something went wrong with SSL or connection broke
+			pass
+
+
+bindsocket = socket.socket()
+bindsocket.bind(('0.0.0.0', 9151))
+bindsocket.listen(5)
+
+while True:
+	try:
+		newsocket, fromaddr = bindsocket.accept()
+		connstream = ssl.wrap_socket(newsocket,
+				server_side=True,
+				certfile="/home/sven/ssl/cert",
+				keyfile="/home/sven/ssl/private",
+				ssl_version=ssl.PROTOCOL_TLSv1)
+		try:
+			client_list.append(Client(connstream))
+			print client_list
+		finally:
+			try:
+				connstream.shutdown(socket.SHUT_RDWR)
+			except socket.error:
+				# todo: handle exception, connection broke
+				pass
+				
+			connstream.close()
+	except ssl.SSLError:
+		# todo: handle exception, SSL initialization failed?
+		pass
+
