@@ -9,13 +9,16 @@ key_path = '/home/sven/ssl/private'
 # Configuration ends here
 ################################
 
-import socket, ssl, select
+import socket, ssl, select, math
 
 def remove_from_list(ls, val):
 	return [value for value in ls if value is not val]
 	
 def to_numeric(identifier):
-	return (ord(identifier[:1]) * 255) + ord(identifier[1:])
+	return ((ord(identifier[:1]) - 1) * 255) + (ord(identifier[1:]) - 1)
+
+def to_identifier(numeric):
+	return chr(int(math.floor(numeric / 255) + 1)) + chr((numeric % 255) + 1)
 
 client_list = []
 client_map = {}
