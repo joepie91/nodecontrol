@@ -31,7 +31,7 @@ class Client:
 	
 	def __init__(self, connstream):
 		self.stream = connstream
-		self.channel_map[0] = Channel()
+		self.channel_map[0] = Channel(EchoHandler())
 
 	def process_data(self, data):
 		self.buff += data
@@ -49,9 +49,9 @@ class Client:
 			channel_numeric = to_numeric(channel_identifier)
 			
 			if channel_numeric in self.channel_map:
-				print "Received data on channel %d: %s" % (channel_numeric, data)
+				self.channel_map[channel_numeric].process_chunk(data)
 			else:
-				print "Received data on NON-EXISTENT channel %d" % channel_numeric
+				print "WARNING: Received data on non-existent channel %d" % channel_numeric
 				
 class Channel:
 	numeric = 0
@@ -66,8 +66,12 @@ class Channel:
 		self.handler.process(chunk)
 		
 class Handler:
-	def process(chunk):
+	def process(self, chunk):
 		pass
+		
+class EchoHandler(Handler):
+	def process(self, chunk):
+		print "Received %s" % chunk
 
 bindsocket = socket.socket()
 bindsocket.bind(('0.0.0.0', 9151))

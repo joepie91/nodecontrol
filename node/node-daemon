@@ -22,6 +22,6 @@ s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 ssl_sock = ssl.wrap_socket(s, cert_reqs=ssl.CERT_REQUIRED, ca_certs=allowed_certs)
 ssl_sock.connect(('localhost', 9151))
 
-ssl_sock.write(to_identifier(3) + 'test data' + EOC + to_identifier(4190) + 'SAMPLEDATA' + EOC)
+ssl_sock.write(to_identifier(0) + 'test data' + EOC + to_identifier(4190) + 'SAMPLEDATA' + EOC)
 
 ssl_sock.close()
