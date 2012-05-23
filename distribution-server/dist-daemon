@@ -9,9 +9,15 @@ key_path = '/home/sven/ssl/private'
 # Configuration ends here
 ################################
 
-import socket, ssl
+import socket, ssl, select
+
+def remove_from_list(ls, val):
+	return [value for value in ls if value is not val]
 
 client_list = []
+client_map = {}
+select_inputs = []
+select_outputs = []
 
 class Client:
 	def __init__(self, connstream):
@@ -34,26 +40,38 @@ bindsocket = socket.socket()
 bindsocket.bind(('0.0.0.0', 9151))
 bindsocket.listen(5)
 
-while True:
-	try:
-		newsocket, fromaddr = bindsocket.accept()
-		connstream = ssl.wrap_socket(newsocket,
-				server_side=True,
-				certfile=cert_path,
-				keyfile=key_path,
-				ssl_version=ssl.PROTOCOL_TLSv1)
-		try:
-			client_list.append(Client(connstream))
-			print client_list
-		finally:
-			try:
-				connstream.shutdown(socket.SHUT_RDWR)
-			except socket.error:
-				# todo: handle exception, connection broke
-				pass
-				
-			connstream.close()
-	except ssl.SSLError:
-		# todo: handle exception, SSL initialization failed?
-		pass
+select_inputs = [ bindsocket ]
 
+while select_inputs:
+	readable, writable, exceptional = select.select(select_inputs, select_outputs, select_inputs)
+	
+	for sock in readable:
+		if sock is bindsocket:
+			try:
+				newsocket, fromaddr = bindsocket.accept()
+				connstream = ssl.wrap_socket(newsocket,
+						server_side=True,
+						certfile=cert_path,
+						keyfile=key_path,
+						ssl_version=ssl.PROTOCOL_TLSv1)
+				
+				new_client = Client(connstream)
+				
+				select_inputs.append(connstream)
+				client_map[connstream.fileno()] = new_client
+				client_list.append(new_client)
+			except ssl.SSLError:
+				# todo: handle exception, SSL initialization failed?
+				pass
+		else:
+			data = sock.recv(1024)
+			
+			if data:
+				print sock.fileno()
+				print sock.read()
+			else:
+				select_inputs = remove_from_list(select_inputs, sock)
+				print "NOTICE: Client disconnected"
+			
+	
+print "Server socket closed, exiting..."
