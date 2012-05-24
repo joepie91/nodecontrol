@@ -91,8 +91,8 @@ while select_inputs:
 	readable, writable, error = select.select(select_inputs, select_outputs, select_inputs)
 	
 	for sock in readable:
-		if sock is bindsocket:
-			try:
+		try:
+			if sock is bindsocket:
 				newsocket, fromaddr = bindsocket.accept()
 				connstream = ssl.wrap_socket(newsocket,
 						server_side=True,
@@ -105,18 +105,22 @@ while select_inputs:
 				select_inputs.append(connstream)
 				client_map[connstream.fileno()] = new_client
 				client_list.append(new_client)
-			except ssl.SSLError:
-				# todo: handle exception, SSL initialization failed?
-				pass
-		else:
-			data = sock.recv(1024)
-			
-			if data:
-				cur_client = client_map[sock.fileno()]
-				cur_client.process_data(data)
 			else:
-				select_inputs = remove_from_list(select_inputs, sock)
-				print "NOTICE: Client disconnected"
+				data = sock.recv(1024)
+				
+				if data:
+					cur_client = client_map[sock.fileno()]
+					cur_client.process_data(data)
+				else:
+					select_inputs = remove_from_list(select_inputs, sock)
+					print "NOTICE: Client disconnected"
+		except ssl.SSLError, err:
+			if err.args[0] == ssl.SSL_ERROR_WANT_READ:
+				select.select([sock], [], [])
+			elif err.args[0] == ssl.SSL_ERROR_WANT_WRITE:
+				select.select([], [sock], [])
+			else:
+				raise
 			
 	
 print "Server socket closed, exiting..."
