@@ -11,12 +11,33 @@ allowed_certs = '/home/sven/ssl/allowed'
 import socket, ssl, time, math
 from shared.core import *
 
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-ssl_sock = ssl.wrap_socket(s, cert_reqs=ssl.CERT_REQUIRED, ca_certs=allowed_certs)
-ssl_sock.connect(('localhost', 9151))
+select_inputs = []
+select_outputs = []
+client_map = {}
 
-ssl_sock.write(to_identifier(0) + 'test data' + EOC + to_identifier(4190) + 'SAMPLEDATA' + EOC)
+client = SSLClient("localhost", 9151, allowed_certs)
+select_inputs.append(client.ssl_sock)
+select_outputs.append(client.ssl_sock)
+client_map[client.ssl_sock.fileno()] = client.client
 
-print ssl_sock.read()[2:]
+while True:
+	readable, writable, error = select.select(select_inputs, select_outputs, select_inputs)
+	
+	for sock in readable:
+		try:
+			data = sock.recv(1024)
+			
+			if data:
+				cur_client = client_map[sock.fileno()]
+				cur_client.process_data(data)
+			else:
+				select_inputs = remove_from_list(select_inputs, sock)
+				print "NOTICE: Client disconnected"
+		except ssl.SSLError, err:
+			if err.args[0] == ssl.SSL_ERROR_WANT_READ:
+				select.select([sock], [], [])
+			elif err.args[0] == ssl.SSL_ERROR_WANT_WRITE:
+				select.select([], [sock], [])
+			else:
+				raise
 
-ssl_sock.close()
