@@ -177,35 +177,38 @@ class SSLDaemon:
 		while self.select_inputs:
 			readable, writable, error = select.select(self.select_inputs, self.select_outputs, self.select_inputs)
 			
-			for sock in readable:
-				try:
-					if sock is bindsocket:
-						newsocket, fromaddr = bindsocket.accept()
-						connstream = ssl.wrap_socket(newsocket,
-								server_side=True,
-								certfile=cert_path,
-								keyfile=key_path,
-								ssl_version=ssl.PROTOCOL_TLSv1)
-						
-						new_client = Client(connstream)
-						
-						self.select_inputs.append(connstream)
-						self.select_outputs.append(connstream)
-						self.client_map[connstream.fileno()] = new_client
-						self.client_list.append(new_client)
-					else:
-						data = sock.recv(1024)
-						
-						if data:
-							cur_client = self.client_map[sock.fileno()]
-							cur_client.process_data(data)
+			if len(readable) > 0:
+				for sock in readable:
+					try:
+						if sock is bindsocket:
+							newsocket, fromaddr = bindsocket.accept()
+							connstream = ssl.wrap_socket(newsocket,
+									server_side=True,
+									certfile=cert_path,
+									keyfile=key_path,
+									ssl_version=ssl.PROTOCOL_TLSv1)
+							
+							new_client = Client(connstream)
+							
+							self.select_inputs.append(connstream)
+							self.select_outputs.append(connstream)
+							self.client_map[connstream.fileno()] = new_client
+							self.client_list.append(new_client)
 						else:
-							self.select_inputs = remove_from_list(self.select_inputs, sock)
-							print "NOTICE: Client disconnected"
-				except ssl.SSLError, err:
-					if err.args[0] == ssl.SSL_ERROR_WANT_READ:
-						select.select([sock], [], [])
-					elif err.args[0] == ssl.SSL_ERROR_WANT_WRITE:
-						select.select([], [sock], [])
-					else:
-						raise
+							data = sock.recv(1024)
+							
+							if data:
+								cur_client = self.client_map[sock.fileno()]
+								cur_client.process_data(data)
+							else:
+								self.select_inputs = remove_from_list(self.select_inputs, sock)
+								print "NOTICE: Client disconnected"
+					except ssl.SSLError, err:
+						if err.args[0] == ssl.SSL_ERROR_WANT_READ:
+							select.select([sock], [], [])
+						elif err.args[0] == ssl.SSL_ERROR_WANT_WRITE:
+							select.select([], [sock], [])
+						else:
+							raise
+			else:
+				time.sleep(0.010)
