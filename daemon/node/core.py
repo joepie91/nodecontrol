@@ -27,11 +27,12 @@ while True:
 		for sock in readable:
 			try:
 				data = sock.recv(1024)
+				cur_client = client_map[sock.fileno()]
 				
 				if data:
-					cur_client = client_map[sock.fileno()]
 					cur_client.process_data(data)
 				else:
+					cur_client.end()
 					select_inputs = remove_from_list(select_inputs, sock)
 					print "NOTICE: Client disconnected"
 			except ssl.SSLError, err:
