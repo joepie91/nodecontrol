@@ -13,17 +13,23 @@ def remove_from_list(ls, val):
 	return [value for value in ls if value is not val]
 
 class PingThread(threading.Thread):
+	aborted = False
+	
 	def __init__(self, channel):
 		self.channel = channel
 		threading.Thread.__init__(self)
 		self.daemon = True
 		
 	def run(self):
-		while True:
+		while self.aborted is False:
 			self.pingkey = ''.join(random.choice(string.letters + string.digits) for i in xrange(5))
 			self.pingtime = datetime.time(datetime.now())
 			self.channel.send("PING %s" % self.pingkey)
 			time.sleep(10)
+			
+	def abort(self):
+		self.aborted = True
+		print "Aborted thread."
 
 class Client:
 	buff = ""
@@ -59,6 +65,11 @@ class Client:
 				self.channel_map[channel_numeric].process_chunk(data)
 			else:
 				print "WARNING: Received data on non-existent channel %d" % channel_numeric
+	
+	def end(self):
+		for key, chan in self.channel_map.iteritems():
+			print "Destructing handler for channel %d" % chan.numeric
+			chan.handler.destruct()
 
 class Channel:
 	numeric = 0
@@ -85,6 +96,9 @@ class Handler:
 		self.client = client
 	
 	def process(self, chunk):
+		pass
+	
+	def destruct(self):
 		pass
 		
 class ControlHandler(Handler):
@@ -134,6 +148,9 @@ class ControlHandler(Handler):
 			seconds_end = current_time.second + microseconds
 			
 			print "Latency: %f seconds" % (seconds_end - seconds_start)
+			
+	def destruct(self):
+		self.pingthread.abort()
 		
 class EchoHandler(Handler):
 	def process(self, chunk):
@@ -196,11 +213,12 @@ class SSLDaemon:
 							self.client_list.append(new_client)
 						else:
 							data = sock.recv(1024)
+							cur_client = self.client_map[sock.fileno()]
 							
 							if data:
-								cur_client = self.client_map[sock.fileno()]
 								cur_client.process_data(data)
 							else:
+								cur_client.end()
 								self.select_inputs = remove_from_list(self.select_inputs, sock)
 								print "NOTICE: Client disconnected"
 					except ssl.SSLError, err:
